@@ -33,7 +33,7 @@
       ret))
 
 
-(defn main [path]
+(defn main [path retrieve]
   (let [options (-> (find-file path)
                     (find-lein-dependencies))
         deps (:dependencies options)]
@@ -41,15 +41,17 @@
       (go (let [dp (<!(hb/resolve-dependencies 
                                       :coordinates deps
                                       :local-repo (.resolve npath "./tmp/repo/")
-                                      :retrieve true))]
+                                      :retrieve retrieve))]
 
-              (println "classpath is: " (strg/join ":" (map hb/dep->path dp))))))))
+            (if retrieve
+              (println "classpath is: " (strg/join ":" (map hb/dep->path dp)))
+              (println "dependency graph " (second dp))))))))
+
 
 ;Pass the a directory with a project file in it and it'll fetch the dependencies
 (let [pth (drop 6 argv)
       rslv (.resolve npath (first pth))]
-  (println (first pth))
-  (main rslv))
+  (main rslv (= "true" (strg/lower-case (last pth)))))
 
 
         
