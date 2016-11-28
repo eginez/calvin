@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 #@ Bootstrap the lumo exec with appropiate dependency
-lumo -c lib/huckleberry-0.2.0.jar:lib/andare-0.4.0.jar -K calvin.cljs $@
+lumo -c lib/huckleberry-0.2.0.jar:lib/andare-0.4.0.jar:lib/tools.cli-0.3.5.jar -K calvin.cljs "$@"
