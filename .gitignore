@@ -2,3 +2,8 @@ node_modules
 tmp
 .lumo_cache
 .nrepl-history
+target
+target/
+out/
+.idea/
+*.iml
