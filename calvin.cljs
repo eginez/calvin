@@ -45,27 +45,29 @@
                         :retrieve true))]
             (strg/join ":" (map hb/dep->path dp))))))
 
-(defn run-repl []
+(defn build-cmd-for-platform [platform classpath]
+  (case platform
+    "lumo"    ["lumo" ["-c" classpath]]
+    "planck"  ["planck" ["-c" classpath]]))
+
+(defn run-repl [platform]
   (go
     (let [cwd (.cwd nproc)
           classpath (<! (resolve-classpath cwd))
-          args ["-c" classpath]
-          lumoProc (.spawn nchild "lumo" (clj->js args))]
+          [bin args] (build-cmd-for-platform platform classpath)
+          proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2]}))]
+      proc)))
 
-      (do 
-        (.setEncoding (.-stdin lumoProc) "utf-8")
-        (.pipe (.-stdin nproc) (.-stdin lumoProc))
-        (.pipe (.-stdout lumoProc) (.-stdout nproc))))))
+(def cli-options [["-h" "--help"]
+                  ["-p" "--platform PLATFORM" "Either planck or lumo"
+                   :default "lumo"]])
 
-
-
-(def cli-options [["-h" "--help"]])
 ;Pass the a directory with a project file in it and it'll fetch the dependencies
 (let [args (drop 6 argv)
-      {:keys [options arguments errors summ]} (parse-opts args cli-options :in-order true)]
+      {:keys [options arguments errors summ]} (parse-opts args cli-options :in-order true)
+      platform (:platform options)]
     (case (first arguments)
-      nil (run-repl)))
-  ;(main rslv (= "true" (strg/lower-case (last pth)))))
+      nil (run-repl platform)))
 
 
         
