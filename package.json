@@ -1,0 +1,32 @@
+{
+  "name": "calvin",
+  "version": "0.0.1",
+  "description": "a minimalistic build tool for clojurescript in clojurescript",
+  "main": "calvin.js",
+  "dependencies": {
+    "source-map-support": "0.4.0",
+    "xml2js": "0.4.17",
+    "request": "2.74.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eginez/calvin.git"
+  },
+  "keywords": [
+    "clojurescript",
+    "clojure",
+    "buildtools",
+    "clojurescript",
+    "bootstrapped"
+  ],
+  "author": "Esteban G",
+  "license": "EPL-1.0",
+  "bugs": {
+    "url": "https://github.com/eginez/calvin/issues"
+  },
+  "homepage": "https://github.com/eginez/calvin#readme"
+}
