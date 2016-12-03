@@ -30,6 +30,7 @@
                                    :target :nodejs
                                    :output-dir "out/dev"
                                    :optimizations :none
+                                   :pretty-print true
                                    :parallel-build true
                                    :source-map true}}
                        {:id "test"

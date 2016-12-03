@@ -4,6 +4,7 @@
          [cljs.nodejs :as nodejs]
          [cljs.tools.cli :refer [parse-opts]]
          [cljs.core.async :refer [put! take! chan <! >!] :as async]
+         [cljs.pprint :as pprint]
          [eginez.huckleberry.core :as hb]
          [cljs.reader :as reader]))
 
@@ -21,6 +22,11 @@
       (.join npath fpath fname)))
 
 
+(defn samedep? [dep1 dep2]
+ (and (= (:artifact dep1 ) (:artifact dep2))
+      (= (:version dep1) (:version dep2))
+      (= (:group dep1) (:group dep2))))
+
 (defn load-content [file]
   (-> (.readFileSync fs file) .toString))
 
@@ -34,20 +40,61 @@
       ret))
 
 
+
+(defn resolve-dependencies [coordinates retrieve]
+  (let [dp (hb/resolve-dependencies
+                    :coordinates coordinates
+                    :local-repo (:local hb/default-repos)
+                    :retrieve retrieve)]
+        dp))
+
 (defn resolve-classpath [path-to-project]
-  (let [options (-> (find-file path-to-project)
-                    (find-lein-dependencies))
-        deps (:dependencies options)]
-      (go (let [dp (<!(hb/resolve-dependencies 
-                        :coordinates deps
-                        :local-repo (:local hb/default-repos)
-                        :retrieve true))]
-            (strg/join ":" (map hb/dep->path dp))))))
+  (go
+    (let [options (-> (find-file path-to-project)
+                      (find-lein-dependencies))
+          deps (:dependencies options)
+          dep-list (<!(resolve-dependencies deps true))]
+    (strg/join ":" (map hb/dep->path dep-list)))))
+
+(defn print-dep-tree [root graph depth]
+  (let [art (first (filter #(samedep? root %) (keys graph)))
+        deps (get graph art)]
+        (println (strg/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
+        (if (not-empty deps)
+          (doseq [n deps]
+            (print-dep-tree n graph (inc depth))))))
+
+
+(defn show-all-deps [graph]
+  (when (not-empty graph)
+    (let [root (dissoc (first graph) :exclusions)
+          dg (second graph)
+          [head-dep & _] (filter #(samedep? root %) (keys dg))]
+      (do
+        (println)
+        (print-dep-tree head-dep dg 0)
+        (recur (drop 2 graph))))))
+
+
+(defn show-deps []
+  (go
+    (println "Calculating dependencies")
+    (let [cwd (.cwd nproc)
+          options (-> (find-file cwd)
+                      (find-lein-dependencies))
+          coordinates (:dependencies options)
+          [status dep-graph dep-list] (<!(resolve-dependencies coordinates false))
+          root (dissoc (first dep-graph) :exclusions)
+          dg (second dep-graph)
+          [head-dep & _] (filter #(samedep? root %) (keys dg))]
+      (show-all-deps dep-graph))))
+      ;(print-dep-tree head-dep dg 0))))
 
 (defn build-cmd-for-platform [platform classpath]
   (case platform
     "lumo"    ["lumo" ["-c" classpath]]
     "planck"  ["planck" ["-c" classpath]]))
+
 
 (defn run-repl [platform]
   (go
@@ -66,7 +113,9 @@
         (parse-opts args cli-options :in-order true)
         platform (:platform options)]
     (case (first arguments)
-      nil (run-repl platform))))
+      "deps" (show-deps)
+      "repl" (run-repl platform))))
+
 
 (nodejs/enable-util-print!)
 (set! *main-cli-fn* -main)
