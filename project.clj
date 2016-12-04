@@ -32,7 +32,22 @@
                                    :optimizations :none
                                    :pretty-print true
                                    :parallel-build true
-                                   :source-map true}}
+                                   :source-map true}
+                        }
+                       {:id "prod"
+                        :source-paths ["src/main/clojure"]
+                        :figwheel true
+                        :compiler {
+                                   :main eginez.calvin.core
+                                   :output-to "package/prod/index.js"
+                                   :target :nodejs
+                                   :output-dir "package/prod"
+                                   :optimizations :simple
+                                   :pretty-print true
+                                   :parallel-build true
+                                   :source-map "package/prod/sourcemap.js"
+                                   }
+                        }
                        {:id "test"
                         :source-paths[ "src/main/clojure" "src/test/clojure"]
                         :compiler {

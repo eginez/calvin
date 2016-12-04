@@ -7,3 +7,5 @@ target/
 out/
 .idea/
 *.iml
+package/prod/
+package/node_modules/

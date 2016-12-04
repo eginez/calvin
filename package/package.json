@@ -1,8 +1,8 @@
 {
-  "name": "calvin",
-  "version": "0.0.1",
+  "name": "calvin-cljs",
+  "version": "0.0.3",
   "description": "a minimalistic build tool for clojurescript in clojurescript",
-  "main": "calvin.js",
+  "main": "prod/index.js",
   "dependencies": {
     "source-map-support": "0.4.0",
     "xml2js": "0.4.17",
@@ -23,10 +23,14 @@
     "clojurescript",
     "bootstrapped"
   ],
-  "author": "Esteban G",
+  "author": "stbgz",
   "license": "EPL-1.0",
   "bugs": {
     "url": "https://github.com/eginez/calvin/issues"
   },
-  "homepage": "https://github.com/eginez/calvin#readme"
+  "homepage": "https://github.com/eginez/calvin#readme",
+  "preferGlobal": "true",
+  "bin": {
+    "calvin": "prod/index.js"
+  }
 }

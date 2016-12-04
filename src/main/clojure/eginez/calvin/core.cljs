@@ -107,6 +107,14 @@
 (def cli-options [["-h" "--help"]
                   ["-p" "--platform PLATFORM" "Either planck or lumo"
                    :default "lumo"]])
+(def help
+  (strg/join \newline (flatten ["Calvin a minimalistic build tool for clojurescript"
+                       "Usage: calvin [options] args"
+                       "Options:"
+                       (map #(str "\t" (strg/join " " (take 2 %))) cli-options)
+                       "Arguments:"
+                       "\tdeps Shows dependencies"
+                       "\trepl Starts a repl using either lumo or planck"])))
 
 (defn -main[& args]
   (let [{:keys [options arguments errors summ]}
@@ -114,7 +122,9 @@
         platform (:platform options)]
     (case (first arguments)
       "deps" (show-deps)
-      "repl" (run-repl platform))))
+      "repl" (run-repl platform)
+      nil (println help))))
+
 
 
 (nodejs/enable-util-print!)
