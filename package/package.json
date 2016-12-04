@@ -1,6 +1,6 @@
 {
   "name": "calvin-cljs",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "a minimalistic build tool for clojurescript in clojurescript",
   "main": "prod/index.js",
   "dependencies": {
