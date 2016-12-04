@@ -2,7 +2,7 @@
 A minimalistic build tool for clojurescript projects that does not require the jvm
 
 ## What is it
-calvin aims to provide a minimalistic build to replace jvm based tools for boostrapped clojurescript
+In conjuntion with boostrapped clojurescript calvin aims to enable a jvm-less development enviroment
 
 ## Current status
 1. Repls: calvin is now capable of boostraping [planck](https://github.com/mfikes/planck) or [lumo](https://github.com/anmonteiro/lumo) repls
