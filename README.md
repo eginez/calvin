@@ -1,4 +1,5 @@
-# calvin
+# calvin [![npm package](https://nodei.co/npm/calvin-cljs.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/calvin-cljs/)
+
 A minimalistic build tool for clojurescript projects that does not require the jvm
 
 ## What is it
@@ -11,6 +12,9 @@ with the proper classpath as described in a lein project file
 
 
 ## Installation
+ 
+Download and install via [npm](https://www.npmjs.com/package/calvin-cljs)
 
-### Via [NPM](https://www.npmjs.com/package/calvin-cljs)
+
+
 
