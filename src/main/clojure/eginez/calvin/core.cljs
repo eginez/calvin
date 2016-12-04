@@ -13,7 +13,6 @@
 (def npath (nodejs/require "path"))
 (def nchild (nodejs/require "child_process"))
 (def nproc (nodejs/require "process"))
-(def argv (.-argv nproc))
 
 (defn find-file [fpath]
   (let [files (.readdirSync fs fpath)
