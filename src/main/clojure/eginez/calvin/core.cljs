@@ -38,14 +38,12 @@
         ret (reduce merge mapopts)]
       ret))
 
-
-
 (defn resolve-dependencies [coordinates retrieve]
   (let [dp (hb/resolve-dependencies
                     :coordinates coordinates
                     :local-repo (:local hb/default-repos)
                     :retrieve retrieve)]
-        dp))
+       dp))
 
 (defn resolve-classpath [path-to-project]
   (go
@@ -53,18 +51,19 @@
                       (find-lein-dependencies))
           deps (:dependencies options)
           dep-list (<!(resolve-dependencies deps true))]
-    (strg/join ":" (map hb/dep->path dep-list)))))
+     (strg/join ":" (map hb/dep->path dep-list)))))
 
 (defn print-dep-tree [root graph depth]
   (let [art (first (filter #(samedep? root %) (keys graph)))
         deps (get graph art)]
-        (println (strg/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
-        (if (not-empty deps)
-          (doseq [n deps]
-            (print-dep-tree n graph (inc depth))))))
+       (println (strg/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
+       (if (not-empty deps)
+         (doseq [n deps]
+           (print-dep-tree n graph (inc depth))))))
 
 
 (defn show-all-deps [graph]
+  [head-dep dg & _]
   (when (not-empty graph)
     (let [root (dissoc (first graph) :exclusions)
           dg (second graph)
@@ -108,12 +107,12 @@
                    :default "lumo"]])
 (def help
   (strg/join \newline (flatten ["Calvin a minimalistic build tool for clojurescript"
-                       "Usage: calvin [options] args"
-                       "Options:"
-                       (map #(str "\t" (strg/join " " (take 2 %))) cli-options)
-                       "Arguments:"
-                       "\tdeps Shows dependencies"
-                       "\trepl Starts a repl using either lumo or planck"])))
+                                "Usage: calvin [options] args"
+                                "Options:"
+                                (map #(str "\t" (strg/join " " (take 2 %))) cli-options)
+                                "Arguments:"
+                                "\tdeps Shows dependencies"
+                                "\trepl Starts a repl using either lumo or planck"])))
 
 (defn -main[& args]
   (let [{:keys [options arguments errors summ]}
@@ -128,8 +127,3 @@
 
 (nodejs/enable-util-print!)
 (set! *main-cli-fn* -main)
-
-
-        
-
-
