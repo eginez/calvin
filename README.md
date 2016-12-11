@@ -1,20 +1,45 @@
 # calvin [![npm package](https://nodei.co/npm/calvin-cljs.png?downloads=true&downloadRank=true&stars=true)](https://nodei.co/npm/calvin-cljs/)
 
-A minimalistic build tool for clojurescript projects that does not require the jvm
+A minimalistic build tool for clojurescript in clojurescript that does not require the jvm.
 
-## What is it
-In conjuntion with boostrapped clojurescript calvin aims to enable a jvm-less development enviroment
+## Why?
+In conjunction with boostrapped clojurescript calvin aims to enable a clojurescript jvm-less development environment
 
 ## Current status
 1. Repls: calvin boostraps [planck](https://github.com/mfikes/planck) or [lumo](https://github.com/anmonteiro/lumo) repls
-with the proper classpath as described in a lein project file
+with the proper "classpath" as described in a lein project file
 2. Dependencies: calvin resolves and prints dependencies specified in lein project files
 
 
 ## Installation
- 
-Download and install via [npm](https://www.npmjs.com/package/calvin-cljs)
+
+0. Install lumo or planck
+
+1. Download and install via [npm](https://www.npmjs.com/package/calvin-cljs)
 
 
+## Getting started
+Once calvin is installed you can do this in your terminal
 
+    calvin -h
 
+This will print out the help for calvin
+
+### Repls
+To start one of the boostrapped repls you can
+
+start a lumo repl
+
+    calvin repl  
+
+start a planck repl
+
+    calvin -p planck repl
+
+### Dependencies
+To discover the dependecies of  a project
+
+    calvin deps
+
+Calvin assumes there is a lein project file in the current directory. It will read such
+file and resolve transitive dependencies
