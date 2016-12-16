@@ -9,3 +9,4 @@ out/
 *.iml
 package/prod/
 package/node_modules/
+*.log

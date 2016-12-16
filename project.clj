@@ -12,31 +12,32 @@
   :test-paths ["src/test/clojure"]
   :clean-targets ["out" "release" "target"]
   :target-path "target"
+  :figwheel {:server-port 3450}
   :plugins [[lein-npm "0.6.1"]
+            [lein-figwheel "0.5.8"]
             [lein-cljsbuild "1.1.3"]]
   :npm {
         :dependencies [[source-map-support "0.4.0"]
                        [xml2js "0.4.17"]
-                       [request "2.74.0"]]
-        }
+                       [request "2.74.0"]]}
+
   :cljsbuild {
               :builds [
                        {:id "dev"
                         :source-paths ["src/main/clojure"]
                         :figwheel true
                         :compiler {
-                                   :main eginez.calvin.core
-                                   :output-to "out/dev/calvin.js"
-                                   :target :nodejs
+                                   :main eginez.calvin.figwheel-server
+                                   :output-to "out/dev/figwheel-server.js"
                                    :output-dir "out/dev"
+                                   :target :nodejs
                                    :optimizations :none
                                    :pretty-print true
                                    :parallel-build true
-                                   :source-map true}
-                        }
+                                   :source-map true}}
+
                        {:id "prod"
                         :source-paths ["src/main/clojure"]
-                        :figwheel true
                         :compiler {
                                    :main eginez.calvin.core
                                    :output-to "package/prod/index.js"
@@ -45,18 +46,4 @@
                                    :optimizations :simple
                                    :pretty-print true
                                    :parallel-build true
-                                   :source-map "package/prod/sourcemap.js"
-                                   }
-                        }
-                       {:id "test"
-                        :source-paths[ "src/main/clojure" "src/test/clojure"]
-                        :compiler {
-                                   :main eginez.huckleberry.test-runner
-                                   :output-to "out/test/test.js"
-                                   :target :nodejs
-                                   :output-dir "out/test"
-                                   :optimizations :none
-                                   :parallel-build true
-                                   :source-map true}
-                        }
-                       ]})
+                                   :source-map "package/prod/sourcemap.js"}}]})
