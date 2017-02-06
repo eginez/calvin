@@ -15,10 +15,13 @@
 (def nproc (nodejs/require "process"))
 
 (defn find-file [fpath]
-  (let [files (.readdirSync fs fpath)
-        fname (-> (filter #(strg/includes? % "project.clj") files)
-                (first))]
-      (.join npath fpath fname)))
+    (try
+      (let [files (.readdirSync fs fpath)
+            fname (-> (filter #(strg/includes? % "project.clj") files)
+                    (first))]
+          (or (.join npath fpath fname) nil))
+      (catch js/Error e nil)))
+
 
 
 (defn samedep? [dep1 dep2]
@@ -27,16 +30,19 @@
       (= (:group dep1) (:group dep2))))
 
 (defn load-content [file]
-  (-> (.readFileSync fs file) .toString))
+  (try
+    (-> (.readFileSync fs file) .toString)
+    (catch js/Error e nil)))
 
 (defn find-lein-dependencies [lein-project-file]
-  (let [content (load-content lein-project-file)
-        rcontent (reader/read-string content)
-        [_ name version & opts] rcontent
-        lopts (partition 2 opts)
-        mapopts (map #(assoc {} (first %) (second %)) lopts)
-        ret (reduce merge mapopts)]
-      ret))
+  (when lein-project-file
+    (let [content (load-content lein-project-file)
+          rcontent (reader/read-string content)
+          [_ name version & opts] rcontent
+          lopts (partition 2 opts)
+          mapopts (map #(assoc {} (first %) (second %)) lopts)
+          ret (reduce merge mapopts)]
+        ret)))
 
 (defn resolve-dependencies [coordinates retrieve]
   (let [dp (hb/resolve-dependencies
@@ -45,13 +51,20 @@
                     :retrieve retrieve)]
        dp))
 
+
+(defn find-coordinates-in-project [path]
+  (let [project-file (find-file path)
+        options (find-lein-dependencies project-file)
+        coordiantes (:dependencies options)]
+      coordiantes))
+
 (defn resolve-classpath [path-to-project]
   (go
-    (let [options (-> (find-file path-to-project)
-                      (find-lein-dependencies))
-          deps (:dependencies options)
-          dep-list (<!(resolve-dependencies deps true))]
-     (strg/join ":" (map hb/dep->path dep-list)))))
+    (let [deps (find-coordinates-in-project path-to-project)]
+        (when deps
+          (let [dep-list (<! (resolve-dependencies deps true))]
+            (strg/join ":" (map hb/dep->path dep-list)))))))
+
 
 (defn print-dep-tree [root graph depth]
   (let [art (first (filter #(samedep? root %) (keys graph)))
@@ -61,9 +74,7 @@
          (doseq [n deps]
            (print-dep-tree n graph (inc depth))))))
 
-
 (defn show-all-deps [graph]
-  [head-dep dg & _]
   (when (not-empty graph)
     (let [root (dissoc (first graph) :exclusions)
           dg (second graph)
@@ -73,31 +84,27 @@
         (print-dep-tree head-dep dg 0)
         (recur (drop 2 graph))))))
 
+(defn build-cmd-for-platform [platform classpath]
+  (let [classpath-cmd (if classpath ["-c" classpath] [])]
+    (case platform
+      "lumo"    (conj ["lumo"] classpath-cmd)
+      "planck"  (conj ["planck"] classpath-cmd))))
 
-(defn show-deps []
+(defn show-deps [cwd]
   (go
     (println "Calculating dependencies")
-    (let [cwd (.cwd nproc)
-          options (-> (find-file cwd)
-                      (find-lein-dependencies))
-          coordinates (:dependencies options)
-          [status dep-graph dep-list] (<!(resolve-dependencies coordinates false))
-          root (dissoc (first dep-graph) :exclusions)
-          dg (second dep-graph)
-          [head-dep & _] (filter #(samedep? root %) (keys dg))]
-      (show-all-deps dep-graph))))
+    (if-let [coordinates (find-coordinates-in-project cwd)]
+      (let [[status dep-graph dep-list] (<!(resolve-dependencies coordinates false))
+            root (dissoc (first dep-graph) :exclusions)
+            dg (second dep-graph)
+            [head-dep & _] (filter #(samedep? root %) (keys dg))]
+        (show-all-deps dep-graph))
+      (println "No dependencies file found are you missing a project.clj or boot.clj?"))))
       ;(print-dep-tree head-dep dg 0))))
 
-(defn build-cmd-for-platform [platform classpath]
-  (case platform
-    "lumo"    ["lumo" ["-c" classpath]]
-    "planck"  ["planck" ["-c" classpath]]))
-
-
-(defn run-repl [platform]
+(defn run-repl [platform cwd]
   (go
-    (let [cwd (.cwd nproc)
-          classpath (<! (resolve-classpath cwd))
+    (let [classpath (<! (resolve-classpath cwd))
           [bin args] (build-cmd-for-platform platform classpath)
           proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2]}))]
       proc)))
@@ -119,8 +126,8 @@
         (parse-opts args cli-options :in-order true)
         platform (:platform options)]
     (case (first arguments)
-      "deps" (show-deps)
-      "repl" (run-repl platform)
+      "deps" (show-deps (.cwd nproc))
+      "repl" (run-repl platform (.cwd nproc))
       nil (println help))))
 
 
