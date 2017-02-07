@@ -5,14 +5,17 @@
          [cljs.tools.cli :refer [parse-opts]]
          [cljs.core.async :refer [put! take! chan <! >!] :as async]
          [cljs.pprint :as pprint]
+         [cljs.js :as cljs]
+         [cljs.reader :as reader]
          [eginez.huckleberry.core :as hb]
-         [cljs.reader :as reader]))
+         [eginez.calvin.tasks :as tasks]))
 
 
 (def fs (nodejs/require "fs"))
 (def npath (nodejs/require "path"))
 (def nchild (nodejs/require "child_process"))
 (def nproc (nodejs/require "process"))
+
 
 (defn find-file [fpath]
     (try
