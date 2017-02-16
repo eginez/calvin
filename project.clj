@@ -7,6 +7,7 @@
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/tools.cli "0.3.5"]
                  [org.clojars.eginez/huckleberry "0.2.0"]
+                 [cljs-node-io "0.5.0"]
                  [andare "0.4.0"]]
   :source-paths ["src/main/clojure" "target/classes"]
   :test-paths ["src/test/clojure"]
@@ -19,6 +20,8 @@
   :npm {
         :dependencies [[source-map-support "0.4.0"]
                        [xml2js "0.4.17"]
+                       [jszip "2.6.1"]
+                       [google-closure-compiler-js "20170124.0.0"]
                        [request "2.74.0"]]}
 
   :cljsbuild {

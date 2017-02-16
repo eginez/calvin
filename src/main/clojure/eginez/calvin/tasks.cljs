@@ -5,9 +5,9 @@
          [cljs.core.async :refer [put! take! chan <! >!] :as async]
          [cljs.pprint :as pprint]
          [cljs.js :as cljs]
-         [cljs.reader :as reader]
+         [eginez.calvin.closure :as closure]
          [eginez.huckleberry.core :as hb]
-         [eginez.calvin.io :as io]))
+         [cljs-node-io.fs :as io]))
 
 (def empty-state (cljs/empty-state))
 (def COMPILERS-EXTENSIONS #{:cljs :cljc :cljs.cache.edn :js :clj})
@@ -18,6 +18,8 @@
     (println error)
     (do
       (print value)
+      (print (get (js->clj (closure/closure-compile
+               (clj->js {"js_output_file" "dnl.js" "jsCode" [{"src" value}]}))) "compiledCode"))
       (io/writeFile "/Users/eginez/repos/calvin/egz.js" value nil))))
 
 (defn get-lang-from-file-name [file-name]
@@ -38,13 +40,12 @@
         src-file (str dir-path io/sep (choose-best-src-file all-src-files))]
 
     (println "Found " src-file)
-    [src-file (io/readFile src-file) (get-lang-from-file-name src-file)]))
+    [src-file (io/readFile src-file "utf-8") (get-lang-from-file-name src-file)]))
 
 (defn find-file-in-container [container libname libpath]
   (cond
     (re-matches #"^goog/.*" libpath) [libpath "" :js]
-    (re-matches #"^clojure/.*" libpath) [libpath "" :clj]))
-    ;(io/dir? container) (find-src-in-dir container libname libpath)))
+    (io/dir? container) (find-src-in-dir container libname libpath)))
 
 
 (defn create-load-fn-with-classpath [classpath]
@@ -56,8 +57,8 @@
 
 
 (defn build [classpath file-path]
-  (if-let* [valid (io/existsFile? file-path)
-            content-str (io/readFile file-path)
+  (if-let* [valid (io/fexists? file-path)
+            content-str (io/readFile file-path "utf-8")
             file-name "egz-file"]
     (cljs/compile-str
       empty-state

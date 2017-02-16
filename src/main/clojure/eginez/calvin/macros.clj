@@ -1,13 +1,4 @@
-
 (ns eginez.calvin.macros)
-
-(defmacro try-true
- [& exprs]
- `(try
-    (do
-      ~@exprs
-      true)
-    (catch ~'js/Error ~'e false)))
 
 (defmacro if-let*
   ([bindings then]
