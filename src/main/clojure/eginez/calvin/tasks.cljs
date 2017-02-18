@@ -18,8 +18,8 @@
     (println error)
     (do
       (print value)
-      (print (get (js->clj (closure/closure-compile
-               (clj->js {"js_output_file" "dnl.js" "jsCode" [{"src" value}]}))) "compiledCode"))
+      (print (get (js->clj (closure/closure-compile))
+               (clj->js {"js_output_file" "dnl.js" "jsCode" [{"src" value}]}))) "compiledCode"
       (io/writeFile "/Users/eginez/repos/calvin/egz.js" value nil))))
 
 (defn get-lang-from-file-name [file-name]

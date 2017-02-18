@@ -16,6 +16,10 @@
 (def nchild (nodejs/require "child_process"))
 (def nproc (nodejs/require "process"))
 
+;The classpath
+;(def sourcepath (atom nil))
+(def sourcepath (atom "/Users/eginez/repos/calvin/src/test/clojure:/Users/eginez/repos/calvin/src/main/clojure:/Users/eginez/repos/calvin/target/classes:/Users/eginez/repos/calvin/dev-resources:/Users/eginez/repos/calvin/resources:/Users/eginez/repos/calvin/target/classes:/Users/eginez/.m2/repository/com/google/javascript/closure-compiler-externs/v20160911/closure-compiler-externs-v20160911.jar:/Users/eginez/.m2/repository/com/google/javascript/closure-compiler-unshaded/v20160911/closure-compiler-unshaded-v20160911.jar:/Users/eginez/.m2/repository/org/clojure/google-closure-library/0.0-20160609-f42b4a24/google-closure-library-0.0-20160609-f42b4a24.jar"))
+
 
 (defn find-file [fpath]
     (try
