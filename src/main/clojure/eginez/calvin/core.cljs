@@ -6,7 +6,8 @@
          [cljs.core.async :refer [put! take! chan <! >!] :as async]
          [cljs.pprint :as pprint]
          [eginez.huckleberry.core :as hb]
-         [cljs.reader :as reader]))
+         [cljs.reader :as reader]
+         [goog.string :refer [parseInt]]))
 
 
 (def fs (nodejs/require "fs"))
@@ -84,11 +85,15 @@
         (print-dep-tree head-dep dg 0)
         (recur (drop 2 graph))))))
 
-(defn build-cmd-for-platform [platform classpath]
-  (let [classpath-cmd (if classpath ["-c" classpath] [])]
+(defn build-cmd-for-platform [options classpath]
+  (let [platform (:platform options)
+        classpath-cmd (if classpath ["-c" classpath] [])
+        socket-repl-port (if-let [socket-portn (:socket-repl-port options)]
+                           ["-n" socket-portn] [])
+        args (into classpath-cmd socket-repl-port)]
     (case platform
-      "lumo"    (conj ["lumo"] classpath-cmd)
-      "planck"  (conj ["planck"] classpath-cmd))))
+      "lumo"    (conj ["lumo"] args)
+      "planck"  (conj ["planck"] args))))
 
 (defn show-deps [cwd]
   (go
@@ -102,32 +107,35 @@
       (println "No dependencies file found are you missing a project.clj or boot.clj?"))))
       ;(print-dep-tree head-dep dg 0))))
 
-(defn run-repl [platform cwd]
+(defn run-repl [options cwd]
   (go
     (let [classpath (<! (resolve-classpath cwd))
-          [bin args] (build-cmd-for-platform platform classpath)
+          [bin args] (build-cmd-for-platform options classpath)
           proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2]}))]
       proc)))
 
 (def cli-options [["-h" "--help"]
                   ["-p" "--platform PLATFORM" "Either planck or lumo"
-                   :default "lumo"]])
+                   :default "lumo"]
+                  ["-n" "--socket-repl SOCKET-REPL" "Port value for socet repl."
+                   :id :socket-repl-port
+                   :parse-fn #(parseInt %)
+                   :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]])
 (def help
   (strg/join \newline (flatten ["Calvin a minimalistic build tool for clojurescript"
                                 "Usage: calvin [options] args"
                                 "Options:"
-                                (map #(str "\t" (strg/join " " (take 2 %))) cli-options)
+                                (map #(str "\t" (strg/join " " (take 3 %))) cli-options)
                                 "Arguments:"
                                 "\tdeps Shows dependencies"
                                 "\trepl Starts a repl using either lumo or planck"])))
 
 (defn -main[& args]
-  (let [{:keys [options arguments errors summ]}
-        (parse-opts args cli-options :in-order true)
-        platform (:platform options)]
+  (let [{:keys [options arguments errors summ] :as env}
+        (parse-opts args cli-options)]
     (case (first arguments)
       "deps" (show-deps (.cwd nproc))
-      "repl" (run-repl platform (.cwd nproc))
+      "repl" (run-repl options (.cwd nproc))
       nil (println help))))
 
 
