@@ -5,6 +5,7 @@
          [cljs.tools.cli :refer [parse-opts]]
          [cljs.core.async :refer [put! take! chan <! >!] :as async]
          [cljs.pprint :as pprint]
+         [cljs.analyzer :as ana]
          [eginez.huckleberry.core :as hb]
          [cljs.reader :as reader]))
 
@@ -13,6 +14,7 @@
 (def npath (nodejs/require "path"))
 (def nchild (nodejs/require "child_process"))
 (def nproc (nodejs/require "process"))
+(def build-preface '(require '[lumo.build.api :as b]))
 
 (defn find-file [fpath]
     (try
@@ -34,7 +36,7 @@
     (-> (.readFileSync fs file) .toString)
     (catch js/Error e nil)))
 
-(defn find-lein-dependencies [lein-project-file]
+(defn find-lein-project-configuration [lein-project-file]
   (when lein-project-file
     (let [content (load-content lein-project-file)
           rcontent (reader/read-string content)
@@ -51,12 +53,37 @@
                     :retrieve retrieve)]
        dp))
 
+(defn with-lein-project [path & opts]
+  (let [file (find-file path)
+        options (find-lein-project-configuration file)]
+    (get-in options (vec opts))))
 
 (defn find-coordinates-in-project [path]
   (let [project-file (find-file path)
-        options (find-lein-dependencies project-file)
+        options (find-lein-project-configuration project-file)
         coordiantes (:dependencies options)]
-      coordiantes))
+    coordiantes))
+
+(defn find-srcs-in-project [path id]
+  (let [builds (with-lein-project path :cljsbuild :builds)
+        srcs (-> (filter #(= (:id %) id) builds) first)
+        dropped (rest (:source-paths srcs))]
+    (if (not (empty? dropped))
+      (println "Current lumo api does not support multiple sources, dropping " dropped))
+    (first (:source-paths srcs))))
+
+(defn find-compiler-opts-in-project [path id]
+  ;;TODO warn when target is not nodejs
+  (let [builds (with-lein-project path :cljsbuild :builds)
+        srcs (-> (filter #(= (:id %) id) builds) first)
+        opts (:compiler srcs)
+        main (:main opts)]
+    (assoc opts :main `'~main)))
+
+(defn build-build-command [src-projects compiler-options]
+  (let [b `(b/build ~src-projects ~compiler-options)]
+    (->> (map str [build-preface b])
+        (strg/join " "))))
 
 (defn resolve-classpath [path-to-project]
   (go
@@ -73,6 +100,14 @@
        (if (not-empty deps)
          (doseq [n deps]
            (print-dep-tree n graph (inc depth))))))
+
+(defn lumo-build-cmd [path id classpath]
+  (let [src-path (find-srcs-in-project path id)
+        compiler-options (find-compiler-opts-in-project path id)
+        build-cmd (build-build-command src-path compiler-options)
+        final-cmd (str "\"" (strg/replace-all build-cmd #"\"" "\\\"") "\"")]
+    ;(println "build lumo cmd with " final-cmd " and path " classpath)
+    ["lumo" ["-c" (str src-path ":" classpath) "-e" final-cmd]]))
 
 (defn show-all-deps [graph]
   (when (not-empty graph)
@@ -102,6 +137,13 @@
       (println "No dependencies file found are you missing a project.clj or boot.clj?"))))
       ;(print-dep-tree head-dep dg 0))))
 
+(defn run-build [cwd id]
+  (go
+    (let [classpath (<! (resolve-classpath cwd))
+          [bin args] (lumo-build-cmd cwd id classpath)
+          proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2] :shell true}))]
+      proc)))
+
 (defn run-repl [platform cwd]
   (go
     (let [classpath (<! (resolve-classpath cwd))
@@ -119,6 +161,7 @@
                                 (map #(str "\t" (strg/join " " (take 2 %))) cli-options)
                                 "Arguments:"
                                 "\tdeps Shows dependencies"
+                                "\tbuild [id] Builds the project using the 'id' configuration"
                                 "\trepl Starts a repl using either lumo or planck"])))
 
 (defn -main[& args]
@@ -128,6 +171,7 @@
     (case (first arguments)
       "deps" (show-deps (.cwd nproc))
       "repl" (run-repl platform (.cwd nproc))
+      "build" (run-build  (.cwd nproc) (or (second arguments) "dev"))
       nil (println help))))
 
 
