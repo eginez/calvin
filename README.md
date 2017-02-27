@@ -9,7 +9,8 @@ In conjunction with boostrapped clojurescript calvin aims to enable a clojurescr
 1. Repls: calvin boostraps [planck](https://github.com/mfikes/planck) or [lumo](https://github.com/anmonteiro/lumo) repls
 with the proper "classpath" as described in a lein project file
 2. Dependencies: calvin resolves and prints dependencies specified in lein project files
-
+3. Building: Calvin can now build your cljs project using the lumo build api and your lein-cljsbuild configuration. 
+For more information look at the [lumo build api](https://anmonteiro.com/2017/02/compiling-clojurescript-projects-without-the-jvm/)
 
 ## Installation
 
@@ -40,6 +41,14 @@ start a planck repl
 To discover the dependecies of  a project
 
     calvin deps
-
+    
 Calvin assumes there is a lein project file in the current directory. It will read such
 file and resolve transitive dependencies
+
+### Building
+Build will read the `cljsbuild :compiler` options of yout `project.clj` file.
+Please not that some compiler options are not supported by the `lumo.build.api`
+
+    calvin build dev
+
+
