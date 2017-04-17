@@ -9,7 +9,6 @@
             [eginez.huckleberry.core :as hb]
             [cljs.reader :as reader]))
 
-
 (def fs (nodejs/require "fs"))
 (def npath (nodejs/require "path"))
 (def nchild (nodejs/require "child_process"))
@@ -23,8 +22,6 @@
                     (first))]
       (or (.join npath fpath fname) nil))
     (catch js/Error e nil)))
-
-
 
 (defn samedep? [dep1 dep2]
   (and (= (:artifact dep1 ) (:artifact dep2))
@@ -53,28 +50,17 @@
             :retrieve retrieve)]
     dp))
 
-(defn with-lein-project [path & opts]
-  (let [file (find-file path)
-        options (find-lein-project-configuration file)]
-    (get-in options (vec opts))))
-
-(defn find-coordinates-in-project [path]
-  (let [project-file (find-file path)
-        options (find-lein-project-configuration project-file)
-        coordiantes (:dependencies options)]
-    coordiantes))
-
-(defn find-srcs-in-project [path id]
-  (let [builds (with-lein-project path :cljsbuild :builds)
+(defn find-srcs-in-project [project id]
+  (let [builds (get-in project [:cljsbuild :builds])
         srcs (-> (filter #(= (:id %) id) builds) first)
         dropped (rest (:source-paths srcs))]
     (if (not (empty? dropped))
       (println "Current lumo api does not support multiple sources, dropping " dropped))
     (first (:source-paths srcs))))
 
-(defn find-compiler-opts-in-project [path id]
+(defn find-compiler-opts-in-project [project id]
   ;;TODO warn when target is not nodejs
-  (let [builds (with-lein-project path :cljsbuild :builds)
+  (let [builds (get-in project [:cljsbuild :builds])
         srcs (-> (filter #(= (:id %) id) builds) first)
         opts (:compiler srcs)
         main (:main opts)]
@@ -85,9 +71,9 @@
     (->> (map str [build-preface b])
          (strg/join " "))))
 
-(defn resolve-classpath [path-to-project]
+(defn resolve-classpath [project]
   (go
-    (let [deps (find-coordinates-in-project path-to-project)]
+    (let [deps (:dependencies project)]
       (when deps
         (let [dep-list (<! (resolve-dependencies deps true))]
           (strg/join ":" (map hb/dep->path dep-list)))))))
@@ -101,9 +87,9 @@
       (doseq [n deps]
         (print-dep-tree n graph (inc depth))))))
 
-(defn lumo-build-cmd [path id classpath]
-  (let [src-path (find-srcs-in-project path id)
-        compiler-options (find-compiler-opts-in-project path id)
+(defn lumo-build-cmd [project id classpath]
+  (let [src-path (find-srcs-in-project project id)
+        compiler-options (find-compiler-opts-in-project project id)
         build-cmd (build-build-command src-path compiler-options)
         final-cmd (str "\"" (strg/replace-all build-cmd #"\"" "\\\"") "\"")]
     ;;(println "build lumo cmd with " final-cmd " and path " classpath)
@@ -125,10 +111,10 @@
       "lumo"    (conj ["lumo"] classpath-cmd)
       "planck"  (conj ["planck"] classpath-cmd))))
 
-(defn show-deps [cwd]
+(defn show-deps [project]
   (go
     (println "Calculating dependencies")
-    (if-let [coordinates (find-coordinates-in-project cwd)]
+    (if-let [coordinates (:dependencies project)]
       (let [[status dep-graph dep-list] (<!(resolve-dependencies coordinates false))
             root (dissoc (first dep-graph) :exclusions)
             dg (second dep-graph)
@@ -137,16 +123,16 @@
       (println "No dependencies file found are you missing a project.clj or boot.clj?"))))
       ;;(print-dep-tree head-dep dg 0)
 
-(defn run-build [cwd id]
+(defn run-build [project id]
   (go
-    (let [classpath (<! (resolve-classpath cwd))
-          [bin args] (lumo-build-cmd cwd id classpath)
+    (let [classpath (<! (resolve-classpath project))
+          [bin args] (lumo-build-cmd project id classpath)
           proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2] :shell true}))]
       proc)))
 
-(defn run-repl [platform cwd rest-args]
+(defn run-repl [platform project rest-args]
   (go
-    (let [classpath (<! (resolve-classpath cwd))
+    (let [classpath (<! (resolve-classpath project))
           [bin args] (build-cmd-for-platform platform classpath)
           proc (.spawn nchild bin (clj->js (concat args rest-args)) (clj->js {:stdio [0 1 2]}))]
       proc)))
@@ -167,11 +153,13 @@
 (defn -main[& args]
   (let [{:keys [options arguments errors summ]}
         (parse-opts args cli-options :in-order true)
-        platform (:platform options)]
+        platform (:platform options)
+        cwd (.cwd nproc)
+        project (find-lein-project-configuration (find-file (.cwd nproc)))]
     (case (first arguments)
-      "deps" (show-deps (.cwd nproc))
-      "repl" (run-repl platform (.cwd nproc) (next arguments))
-      "build" (run-build  (.cwd nproc) (or (second arguments) "dev"))
+      "deps" (show-deps project)
+      "repl" (run-repl platform project (next arguments))
+      "build" (run-build project (or (second arguments) "dev"))
       nil (println help))))
 
 
