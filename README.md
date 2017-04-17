@@ -31,17 +31,24 @@ To start one of the boostrapped repls you can
 
 start a lumo repl
 
-    calvin repl  
+    calvin repl
 
 start a planck repl
 
     calvin -p planck repl
 
+Any remaining arguments are passed on to lumo/planck, so you can do things like
+
+    calvin repl my_script.cljs
+    calvin repl --dumb-terminal
+    calvin repl -c src -m my-project.main
+    calvin repl --socket-repl 3333
+
 ### Dependencies
 To discover the dependecies of  a project
 
     calvin deps
-    
+
 Calvin assumes there is a lein project file in the current directory. It will read such
 file and resolve transitive dependencies
 
