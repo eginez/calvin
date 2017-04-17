@@ -1,13 +1,13 @@
 (ns eginez.calvin.core
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [clojure.string :as strg]
-         [cljs.nodejs :as nodejs]
-         [cljs.tools.cli :refer [parse-opts]]
-         [cljs.core.async :refer [put! take! chan <! >!] :as async]
-         [cljs.pprint :as pprint]
-         [cljs.analyzer :as ana]
-         [eginez.huckleberry.core :as hb]
-         [cljs.reader :as reader]))
+            [cljs.nodejs :as nodejs]
+            [cljs.tools.cli :refer [parse-opts]]
+            [cljs.core.async :refer [put! take! chan <! >!] :as async]
+            [cljs.pprint :as pprint]
+            [cljs.analyzer :as ana]
+            [eginez.huckleberry.core :as hb]
+            [cljs.reader :as reader]))
 
 
 (def fs (nodejs/require "fs"))
@@ -17,19 +17,19 @@
 (def build-preface '(require '[lumo.build.api :as b]))
 
 (defn find-file [fpath]
-    (try
-      (let [files (.readdirSync fs fpath)
-            fname (-> (filter #(strg/includes? % "project.clj") files)
+  (try
+    (let [files (.readdirSync fs fpath)
+          fname (-> (filter #(strg/includes? % "project.clj") files)
                     (first))]
-          (or (.join npath fpath fname) nil))
-      (catch js/Error e nil)))
+      (or (.join npath fpath fname) nil))
+    (catch js/Error e nil)))
 
 
 
 (defn samedep? [dep1 dep2]
- (and (= (:artifact dep1 ) (:artifact dep2))
-      (= (:version dep1) (:version dep2))
-      (= (:group dep1) (:group dep2))))
+  (and (= (:artifact dep1 ) (:artifact dep2))
+       (= (:version dep1) (:version dep2))
+       (= (:group dep1) (:group dep2))))
 
 (defn load-content [file]
   (try
@@ -44,14 +44,14 @@
           lopts (partition 2 opts)
           mapopts (map #(assoc {} (first %) (second %)) lopts)
           ret (reduce merge mapopts)]
-        ret)))
+      ret)))
 
 (defn resolve-dependencies [coordinates retrieve]
   (let [dp (hb/resolve-dependencies
-                    :coordinates coordinates
-                    :local-repo (:local hb/default-repos)
-                    :retrieve retrieve)]
-       dp))
+            :coordinates coordinates
+            :local-repo (:local hb/default-repos)
+            :retrieve retrieve)]
+    dp))
 
 (defn with-lein-project [path & opts]
   (let [file (find-file path)
@@ -83,30 +83,30 @@
 (defn build-build-command [src-projects compiler-options]
   (let [b `(b/build ~src-projects ~compiler-options)]
     (->> (map str [build-preface b])
-        (strg/join " "))))
+         (strg/join " "))))
 
 (defn resolve-classpath [path-to-project]
   (go
     (let [deps (find-coordinates-in-project path-to-project)]
-        (when deps
-          (let [dep-list (<! (resolve-dependencies deps true))]
-            (strg/join ":" (map hb/dep->path dep-list)))))))
+      (when deps
+        (let [dep-list (<! (resolve-dependencies deps true))]
+          (strg/join ":" (map hb/dep->path dep-list)))))))
 
 
 (defn print-dep-tree [root graph depth]
   (let [art (first (filter #(samedep? root %) (keys graph)))
         deps (get graph art)]
-       (println (strg/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
-       (if (not-empty deps)
-         (doseq [n deps]
-           (print-dep-tree n graph (inc depth))))))
+    (println (strg/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
+    (if (not-empty deps)
+      (doseq [n deps]
+        (print-dep-tree n graph (inc depth))))))
 
 (defn lumo-build-cmd [path id classpath]
   (let [src-path (find-srcs-in-project path id)
         compiler-options (find-compiler-opts-in-project path id)
         build-cmd (build-build-command src-path compiler-options)
         final-cmd (str "\"" (strg/replace-all build-cmd #"\"" "\\\"") "\"")]
-    ;(println "build lumo cmd with " final-cmd " and path " classpath)
+    ;;(println "build lumo cmd with " final-cmd " and path " classpath)
     ["lumo" ["-c" (str src-path ":" classpath) "-e" final-cmd]]))
 
 (defn show-all-deps [graph]
@@ -135,7 +135,7 @@
             [head-dep & _] (filter #(samedep? root %) (keys dg))]
         (show-all-deps dep-graph))
       (println "No dependencies file found are you missing a project.clj or boot.clj?"))))
-      ;(print-dep-tree head-dep dg 0))))
+      ;;(print-dep-tree head-dep dg 0)
 
 (defn run-build [cwd id]
   (go
