@@ -1,5 +1,6 @@
 (ns eginez.calvin.core
-  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require-macros [cljs.core.async.macros :refer [go]]
+                   [clojure.string :as str])
   (:require [clojure.string :as strg]
             [cljs.nodejs :as nodejs]
             [cljs.tools.cli :refer [parse-opts]]
@@ -14,6 +15,23 @@
 (def nchild (nodejs/require "child_process"))
 (def nproc (nodejs/require "process"))
 (def build-preface '(require '[lumo.build.api :as b]))
+
+(def debug? (atom false))
+
+(defn println-err [& args]
+  (binding [*print-fn* *print-err-fn*]
+    (apply println args)))
+
+(defn warn [& args]
+  (apply println-err "WARNING:" args))
+
+(defn fatal [& args]
+  (apply println-err "FATAL:" args)
+  (js/process.exit 1))
+
+(defn debug [& args]
+  (when @debug?
+    (apply println-err args)))
 
 (defn find-file [fpath]
   (try
@@ -50,20 +68,45 @@
             :retrieve retrieve)]
     dp))
 
-(defn find-srcs-in-project [project id]
-  (let [builds (get-in project [:cljsbuild :builds])
-        srcs (-> (filter #(= (:id %) id) builds) first)
-        dropped (rest (:source-paths srcs))]
-    (if (not (empty? dropped))
-      (println "Current lumo api does not support multiple sources, dropping " dropped))
-    (first (:source-paths srcs))))
+(defn find-build-from-vector [builds id]
+  (let [build (-> (filter #(= (:id %) id) builds) first)]
+    (if build
+      build
+      (do
+        (warn "No build with id" (str "`" id "'") "found, falling back to" (str "`" (:id (first builds)) "'"))
+        (first builds)))))
 
-(defn find-compiler-opts-in-project [project id]
-  ;;TODO warn when target is not nodejs
-  (let [builds (get-in project [:cljsbuild :builds])
-        srcs (-> (filter #(= (:id %) id) builds) first)
-        opts (:compiler srcs)
-        main (:main opts)]
+(defn find-build-from-map [builds id]
+  (let [build (get builds id (get builds (keyword id)))]
+    (if build
+      build
+      (do
+        (warn "No build with id" (str "`" id "'") "found, falling back to" (str "`" (key (first builds)) "'"))
+        (val (first builds))))))
+
+(defn find-cljsbuild-build [project id]
+  (let [builds (get-in project [:cljsbuild :builds])]
+    (cond
+      (not (seq builds)) (do (fatal "No cljsbuild :builds configured.") nil)
+      (vector? builds) (find-build-from-vector builds id)
+      (map? builds) (find-build-from-map builds id)
+      :else (fatal "cljsbuild :builds configuration must be a vector or a map, got" (prn builds)))))
+
+(defn find-source-path [build]
+  (let [source-paths (:source-paths build)
+        dropped (rest source-paths)]
+    (when-not (vector? source-paths)
+      (fatal ":source-paths must be a vector, got" (prn source-paths)))
+    (when (seq dropped)
+      (warn "Current lumo api does not support multiple sources, dropping " dropped))
+    (first source-paths)))
+
+(defn find-compiler-opts [build]
+  (let [opts (:compiler build)
+        main (:main opts)
+        target (:target opts)]
+    (when-not (= target :nodejs)
+      (warn "The compile target should be :nodejs, got" (prn target) ". Try adding {:compiler {:target :nodejs}}." ))
     (assoc opts :main `'~main)))
 
 (defn build-build-command [src-projects compiler-options]
@@ -78,7 +121,6 @@
         (let [dep-list (<! (resolve-dependencies deps true))]
           (strg/join ":" (map hb/dep->path dep-list)))))))
 
-
 (defn print-dep-tree [root graph depth]
   (let [art (first (filter #(samedep? root %) (keys graph)))
         deps (get graph art)]
@@ -88,11 +130,12 @@
         (print-dep-tree n graph (inc depth))))))
 
 (defn lumo-build-cmd [project id classpath]
-  (let [src-path (find-srcs-in-project project id)
-        compiler-options (find-compiler-opts-in-project project id)
+  (let [build (find-cljsbuild-build project id)
+        src-path (find-source-path build)
+        compiler-options (find-compiler-opts build)
         build-cmd (build-build-command src-path compiler-options)
         final-cmd (str "\"" (strg/replace-all build-cmd #"\"" "\\\"") "\"")]
-    ;;(println "build lumo cmd with " final-cmd " and path " classpath)
+    (debug "build lumo cmd with " final-cmd " and path " classpath)
     ["lumo" ["-c" (str src-path ":" classpath) "-e" final-cmd]]))
 
 (defn show-all-deps [graph]
@@ -120,26 +163,32 @@
             dg (second dep-graph)
             [head-dep & _] (filter #(samedep? root %) (keys dg))]
         (show-all-deps dep-graph))
-      (println "No dependencies file found are you missing a project.clj or boot.clj?"))))
+      (warn "No dependencies file found are you missing a project.clj or boot.clj?"))))
       ;;(print-dep-tree head-dep dg 0)
 
 (defn run-build [project id]
   (go
     (let [classpath (<! (resolve-classpath project))
           [bin args] (lumo-build-cmd project id classpath)
-          proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2] :shell true}))]
+          proc (do
+                 (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2] :shell true}))
+                 (apply debug "Starting build:" bin args))]
       proc)))
 
 (defn run-repl [platform project rest-args]
   (go
     (let [classpath (<! (resolve-classpath project))
           [bin args] (build-cmd-for-platform platform classpath)
-          proc (.spawn nchild bin (clj->js (concat args rest-args)) (clj->js {:stdio [0 1 2]}))]
+          args (concat args rest-args)
+          proc (do
+                 (apply debug "Starting REPL:" bin args)
+                 (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2]})))]
       proc)))
 
 (def cli-options [["-h" "--help"]
-                  ["-p" "--platform PLATFORM" "Either planck or lumo"
-                   :default "lumo"]])
+                  ["-d" "--debug" "Show debug information" :default false]
+                  ["-p" "--platform PLATFORM" "Either planck or lumo" :default "lumo"]])
+
 (def help
   (strg/join \newline (flatten ["Calvin a minimalistic build tool for clojurescript"
                                 "Usage: calvin [options] args"
@@ -156,11 +205,12 @@
         platform (:platform options)
         cwd (.cwd nproc)
         project (find-lein-project-configuration (find-file (.cwd nproc)))]
+    (reset! debug? (:debug options))
     (case (first arguments)
       "deps" (show-deps project)
       "repl" (run-repl platform project (next arguments))
       "build" (run-build project (or (second arguments) "dev"))
-      nil (println help))))
+      nil (println-err help))))
 
 
 
