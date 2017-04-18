@@ -1,7 +1,7 @@
 (ns eginez.calvin.core
   (:require-macros [cljs.core.async.macros :refer [go]]
                    [clojure.string :as str])
-  (:require [clojure.string :as strg]
+  (:require [clojure.string :as str]
             [cljs.nodejs :as nodejs]
             [cljs.tools.cli :refer [parse-opts]]
             [cljs.core.async :refer [put! take! chan <! >!] :as async]
@@ -36,7 +36,7 @@
 (defn find-file [fpath]
   (try
     (let [files (.readdirSync fs fpath)
-          fname (-> (filter #(strg/includes? % "project.clj") files)
+          fname (-> (filter #(str/includes? % "project.clj") files)
                     (first))]
       (or (.join npath fpath fname) nil))
     (catch js/Error e nil)))
@@ -112,19 +112,19 @@
 (defn build-build-command [src-projects compiler-options]
   (let [b `(b/build ~src-projects ~compiler-options)]
     (->> (map str [build-preface b])
-         (strg/join " "))))
+         (str/join " "))))
 
 (defn resolve-classpath [project]
   (go
     (let [deps (:dependencies project)]
       (when deps
         (let [dep-list (<! (resolve-dependencies deps true))]
-          (strg/join ":" (map hb/dep->path dep-list)))))))
+          (str/join ":" (map hb/dep->path dep-list)))))))
 
 (defn print-dep-tree [root graph depth]
   (let [art (first (filter #(samedep? root %) (keys graph)))
         deps (get graph art)]
-    (println (strg/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
+    (println (str/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
     (if (not-empty deps)
       (doseq [n deps]
         (print-dep-tree n graph (inc depth))))))
@@ -134,7 +134,7 @@
         src-path (find-source-path build)
         compiler-options (find-compiler-opts build)
         build-cmd (build-build-command src-path compiler-options)
-        final-cmd (str "\"" (strg/replace-all build-cmd #"\"" "\\\"") "\"")]
+        final-cmd (str "\"" (str/replace-all build-cmd #"\"" "\\\"") "\"")]
     (debug "build lumo cmd with " final-cmd " and path " classpath)
     ["lumo" ["-c" (str src-path ":" classpath) "-e" final-cmd]]))
 
@@ -175,9 +175,14 @@
                  (apply debug "Starting build:" bin args))]
       proc)))
 
-(defn run-repl [platform project rest-args]
+(defn run-repl [platform project rest-args build-id]
   (go
-    (let [classpath (<! (resolve-classpath project))
+    (let [build (find-cljsbuild-build project build-id)
+          src-path (find-source-path build)
+          classpath (<! (resolve-classpath project))
+          classpath (->> [src-path classpath]
+                         (remove #(or (nil? %) (empty? %)))
+                         (str/join ":"))
           [bin args] (build-cmd-for-platform platform classpath)
           args (concat args rest-args)
           proc (do
@@ -187,17 +192,18 @@
 
 (def cli-options [["-h" "--help"]
                   ["-d" "--debug" "Show debug information" :default false]
+                  ["-i" "--build-id" "Set the cljsbuild build id. Defaults to 'dev'" :default "dev"]
                   ["-p" "--platform PLATFORM" "Either planck or lumo" :default "lumo"]])
 
 (def help
-  (strg/join \newline (flatten ["Calvin a minimalistic build tool for clojurescript"
-                                "Usage: calvin [options] args"
-                                "Options:"
-                                (map #(str "\t" (strg/join " " (take 2 %))) cli-options)
-                                "Arguments:"
-                                "\tdeps Shows dependencies"
-                                "\tbuild [id] Builds the project using the 'id' configuration"
-                                "\trepl Starts a repl using either lumo or planck"])))
+  (str/join \newline (flatten ["Calvin a minimalistic build tool for clojurescript"
+                               "Usage: calvin [options] args"
+                               "Options:"
+                               (map #(str "\t" (str/join " " (take 2 %))) cli-options)
+                               "Arguments:"
+                               "\tdeps Shows dependencies"
+                               "\tbuild [id] Builds the project using the 'id' configuration"
+                               "\trepl Starts a repl using either lumo or planck"])))
 
 (defn -main[& args]
   (let [{:keys [options arguments errors summ]}
@@ -208,8 +214,8 @@
     (reset! debug? (:debug options))
     (case (first arguments)
       "deps" (show-deps project)
-      "repl" (run-repl platform project (next arguments))
-      "build" (run-build project (or (second arguments) "dev"))
+      "repl" (run-repl platform project (next arguments) (:build-id options))
+      "build" (run-build project (or (second arguments) (:build-id options)))
       nil (println-err help))))
 
 
