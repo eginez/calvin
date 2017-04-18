@@ -144,11 +144,11 @@
           proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2] :shell true}))]
       proc)))
 
-(defn run-repl [platform cwd]
+(defn run-repl [platform cwd rest-args]
   (go
     (let [classpath (<! (resolve-classpath cwd))
           [bin args] (build-cmd-for-platform platform classpath)
-          proc (.spawn nchild bin (clj->js args) (clj->js {:stdio [0 1 2]}))]
+          proc (.spawn nchild bin (clj->js (concat args rest-args)) (clj->js {:stdio [0 1 2]}))]
       proc)))
 
 (def cli-options [["-h" "--help"]
@@ -170,7 +170,7 @@
         platform (:platform options)]
     (case (first arguments)
       "deps" (show-deps (.cwd nproc))
-      "repl" (run-repl platform (.cwd nproc))
+      "repl" (run-repl platform (.cwd nproc) (next arguments))
       "build" (run-build  (.cwd nproc) (or (second arguments) "dev"))
       nil (println help))))
 
