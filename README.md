@@ -54,7 +54,7 @@ file and resolve transitive dependencies
 
 ### Building
 Build will read the `cljsbuild :compiler` options of yout `project.clj` file.
-Please not that some compiler options are not supported by the `lumo.build.api`
+Please note that some compiler options are not supported by the `lumo.build.api`
 
     calvin build dev
 
