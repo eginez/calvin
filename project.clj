@@ -14,12 +14,13 @@
   :target-path "target"
   :figwheel {:server-port 3450}
   :plugins [[lein-npm "0.6.1"]
-            [lein-figwheel "0.5.8"]
+            [lein-figwheel "0.5.11"]
             [lein-cljsbuild "1.1.3"]]
   :npm {
-        :dependencies [[source-map-support "0.4.0"]
-                       [xml2js "0.4.17"]
-                       [request "2.74.0"]]}
+        :dependencies [[xml2js "0.4.17"]
+                       [request "2.74.0"]]
+        :devDependencies [[source-map-support "0.4.0"]
+                          [ws "3.1.0"]]}
 
   :cljsbuild {
               :builds [
@@ -29,7 +30,7 @@
                         :compiler {
                                    :main eginez.calvin.figwheel-server
                                    :output-to "out/dev/figwheel-server.js"
-                                   :output-dir "out/dev"
+                                   :output-dir "dev"
                                    :target :nodejs
                                    :optimizations :none
                                    :pretty-print true

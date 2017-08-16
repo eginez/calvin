@@ -59,3 +59,10 @@ Please note that some compiler options are not supported by the `lumo.build.api`
     calvin build dev
 
 
+## Hacking
+
+Calvin uses Figwheel for interactive development:
+
+     lein figwheel
+     node out/dev/figwheel-server.js
+
