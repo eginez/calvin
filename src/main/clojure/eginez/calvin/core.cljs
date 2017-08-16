@@ -46,6 +46,8 @@
        (= (:version dep1) (:version dep2))
        (= (:group dep1) (:group dep2))))
 
+(def dep-main-keys [:artifact :version :group])
+
 (defn load-content [file]
   (try
     (-> (.readFileSync fs file) .toString)
@@ -121,14 +123,6 @@
         (let [dep-list (<! (resolve-dependencies deps true))]
           (str/join ":" (map hb/dep->path dep-list)))))))
 
-(defn print-dep-tree [root graph depth]
-  (let [art (first (filter #(samedep? root %) (keys graph)))
-        deps (get graph art)]
-    (println (str/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
-    (if (not-empty deps)
-      (doseq [n deps]
-        (print-dep-tree n graph (inc depth))))))
-
 (defn lumo-build-cmd [project id classpath]
   (let [build (find-cljsbuild-build project id)
         src-path (find-source-path build)
@@ -138,15 +132,30 @@
     (debug "build lumo cmd with " final-cmd " and path " classpath)
     ["lumo" ["-c" (str src-path ":" classpath) "-e" final-cmd]]))
 
-(defn show-all-deps [graph]
+(defn print-dep-tree [resolved-deps head-dep root graph depth]
+  ;; If the dep was not resolved, we print it differently
+  (let [art (first (filter #(samedep? root %) (keys graph)))]
+    (if (contains? resolved-deps art)
+      (let [deps (get graph art)]
+        (println (str/join (concat (repeat depth "*") ">")) (hb/dep->coordinate art))
+        (doseq [d deps]
+          (print-dep-tree resolved-deps head-dep d graph (inc depth))))
+      (println (str "[FAILED]" (str/join (concat (repeat depth "*") ">"))) (hb/dep->coordinate root)))))
+
+(defn show-all-deps [resolved-deps graph]
   (when (not-empty graph)
-    (let [root (dissoc (first graph) :exclusions)
+    (let [resolved-deps (->> resolved-deps
+                             (map #(select-keys % dep-main-keys))
+                             (into #{}))
+          root (-> (first graph)
+                   (dissoc :exclusions)
+                   (select-keys dep-main-keys))
           dg (second graph)
-          [head-dep & _] (filter #(samedep? root %) (keys dg))]
+          head-dep (first (filter #(samedep? root %) (keys dg)))]
       (do
         (println)
-        (print-dep-tree head-dep dg 0)
-        (recur (drop 2 graph))))))
+        (print-dep-tree resolved-deps head-dep root dg 0)
+        (recur resolved-deps (drop 2 graph))))))
 
 (defn build-cmd-for-platform [platform classpath]
   (let [classpath-cmd (if classpath ["-c" classpath] [])]
@@ -158,11 +167,11 @@
   (go
     (println "Calculating dependencies")
     (if-let [coordinates (:dependencies project)]
-      (let [[status dep-graph dep-list] (<!(resolve-dependencies coordinates false))
+      (let [[status dep-graph resolved-deps] (<!(resolve-dependencies coordinates false))
             root (dissoc (first dep-graph) :exclusions)
             dg (second dep-graph)
-            [head-dep & _] (filter #(samedep? root %) (keys dg))]
-        (show-all-deps dep-graph))
+            head-dep (first (filter #(samedep? root %) (keys dg)))]
+        (show-all-deps resolved-deps dep-graph))
       (warn "No dependencies file found are you missing a project.clj or boot.clj?"))))
       ;;(print-dep-tree head-dep dg 0)
 
