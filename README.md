@@ -58,6 +58,47 @@ Please note that some compiler options are not supported by the `lumo.build.api`
 
     calvin build dev
 
+### Using node modules
+
+Assuming npm is installed, here is an example of using an artifact from npm:
+
+1. Installation
+
+```
+npm install shelljs --save
+```
+
+2. Invoking
+
+```clj
+(require '[cljs.nodejs :as node])
+(def s (node/require "shelljs"))
+(.echo s "foo")
+```
+
+3. Latest node_moduels inference in ClojureScript
+
+ClojureScript versions `1.9.854` and after can treat node modules as namespaces.
+
+Example cljsbuild configuration in the project.clj:
+
+```clj
+:cljsbuild {:builds
+               :dev {:source-paths ["src"]
+                     :compiler {:output-to "out/main.js"
+                                :main some-ns.main
+                                :target :nodejs
+                                ;; :npm-deps causes to treat node
+                                ;; modules as proper name spaces
+                                :npm-deps {:shelljs "0.7.8"}}}}}
+```
+
+Now the specified node module can be required like a ClojureScript namespace.
+
+```
+(require 'shelljs)
+(shelljs/echo "foo")
+```
 
 ## Hacking
 
