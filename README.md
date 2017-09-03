@@ -84,13 +84,13 @@ Example cljsbuild configuration in the project.clj:
 
 ```clj
 :cljsbuild {:builds
-               :dev {:source-paths ["src"]
-                     :compiler {:output-to "out/main.js"
-                                :main some-ns.main
-                                :target :nodejs
-                                ;; :npm-deps causes to treat node
-                                ;; modules as proper name spaces
-                                :npm-deps {:shelljs "0.7.8"}}}}}
+            {:dev {:source-paths ["src"]
+                   :compiler {:output-to "out/main.js"
+                              :main some-ns.main
+                              :target :nodejs
+                              ;; :npm-deps causes to treat node
+                              ;; modules as proper name spaces
+                              :npm-deps {:shelljs "0.7.8"}}}}}
 ```
 
 Now the specified node module can be required like a ClojureScript namespace.
