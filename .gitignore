@@ -10,3 +10,4 @@ out/
 package/prod/
 package/node_modules/
 *.log
+dev/
