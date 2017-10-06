@@ -76,7 +76,7 @@ npm install shelljs --save
 (.echo s "foo")
 ```
 
-3. Latest node_moduels inference in ClojureScript
+3. Latest node_modules inference in ClojureScript
 
 ClojureScript versions `1.9.854` and after can treat node modules as namespaces.
 
