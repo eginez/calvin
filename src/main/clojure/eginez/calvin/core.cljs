@@ -92,13 +92,13 @@
       (not (seq builds)) (do (fatal "No cljsbuild :builds configured.") nil)
       (vector? builds) (find-build-from-vector builds id)
       (map? builds) (find-build-from-map builds id)
-      :else (fatal "cljsbuild :builds configuration must be a vector or a map, got" (prn builds)))))
+      :else (fatal "cljsbuild :builds configuration must be a vector or a map, got" builds))))
 
 (defn find-source-path [build]
   (let [source-paths (:source-paths build)
         dropped (rest source-paths)]
     (when-not (vector? source-paths)
-      (fatal ":source-paths must be a vector, got" (prn source-paths)))
+      (fatal ":source-paths must be a vector, got" source-paths))
     (when (seq dropped)
       (warn "Current lumo api does not support multiple sources, dropping " dropped))
     (first source-paths)))
@@ -108,7 +108,7 @@
         main (:main opts)
         target (:target opts)]
     (when-not (= target :nodejs)
-      (warn "The compile target should be :nodejs, got" (prn target) ". Try adding {:compiler {:target :nodejs}}." ))
+      (warn "The compile target should be :nodejs, got" target ". Try adding {:compiler {:target :nodejs}}." ))
     (assoc opts :main `'~main)))
 
 (defn build-build-command [src-projects compiler-options]
