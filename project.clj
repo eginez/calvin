@@ -6,7 +6,7 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.293"]
                  [org.clojure/tools.cli "0.3.5"]
-                 [org.clojars.eginez/huckleberry "0.2.0"]
+                 [org.clojars.eginez/huckleberry "0.2.1"]
                  [andare "0.4.0"]]
   :source-paths ["src/main/clojure" "target/classes"]
   :test-paths ["src/test/clojure"]
